@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Encomendas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background-image: url('images.jpeg'); /* Caminho para a imagem */
+            background-color: #f0f0f0; /* Cor de fallback */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+            transition: all 0.3s ease-in-out;
+            text-align: center;
+        }
+        .container:hover {
+            box-shadow: 0px 15px 25px rgba(0, 0, 0, 0.3);
+        }
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            padding: 5px 0; /* Margem interna maior para melhor leitura */
+            font-size: 12px; /* Fonte um pouco maior */
+        }
+    </style>
+</head>
+<body>
+    <div class="container text-center">
+        <h2 class="text-center mb-4">Controle de Encomendas</h2>
+        <div class="alert alert-warning" id="painelPendentes" style="display: none;">
+            📦 <strong><span id="contagemPendentes">0</span></strong> encomenda(s) aguardando retirada
+        </div>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="cadastro.html" class="btn btn-primary">Cadastrar Encomenda</a>
+            <a href="retirada.html" class="btn btn-secondary">Retirar Encomenda</a>
+            <a href="historico.html" class="btn btn-outline-dark">Histórico</a>
+            <a href="cadastro_morador.html" class="btn btn-outline-primary">Cadastrar Morador</a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        &copy; 2025 - SafePack. Todos os direitos reservados.
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="index.js" type="module"></script>
+    <script>
+        // Mini-dashboard: mostra quantas encomendas ainda estão pendentes de retirada
+        (async () => {
+            try {
+                let response = await fetch('http://127.0.0.1:8000/entregas/pendentes/contagem');
+                if (response.ok) {
+                    let dados = await response.json();
+                    if (dados.pendentes > 0) {
+                        document.getElementById('contagemPendentes').textContent = dados.pendentes;
+                        document.getElementById('painelPendentes').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Não foi possível carregar o painel de pendências:', error);
+            }
+        })();
+    </script>
+
+</body>
+</html>
+

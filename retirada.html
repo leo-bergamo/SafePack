@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Retirada de Encomenda</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas"></script>
+    <style>
+        body {
+            background-image: url('images.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            /* min-height (em vez de height fixo) + overflow-y:auto garante que, quando o
+               formulário for mais alto que a tela, dê para rolar até o topo em vez de o
+               conteúdo ficar cortado e inacessível. */
+            min-height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            padding: 20px;
+            position: relative;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+            transition: all 0.3s ease-in-out;
+        }
+        .container:hover {
+            box-shadow: 0px 15px 25px rgba(0, 0, 0, 0.3);
+        }
+        .form-label .required {
+            color: red;
+        }
+        .disabled-input {
+            background-color: #f0f0f0 !important;
+            color: #a0a0a0 !important;
+        }
+        .hidden {
+            display: none;
+        }
+        .mensagem-sucesso, .mensagem-impressao {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            padding: 1px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center mb-4">Retirada de Encomenda</h2>
+        <form id="retiradaForm" novalidate>
+            <div class="mb-3">
+                <label class="form-label">Nº do Apartamento que vai retirar <span class="required">*</span></label>
+                <select class="form-control" id="apartamentoRetirada" required>
+                    <option value="">Carregando apartamentos...</option>
+                </select>
+                <small class="form-text text-muted">Só aparecem apartamentos com encomenda pendente de retirada.</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Qual encomenda será retirada <span class="required">*</span></label>
+                <select class="form-control" id="dataChegada">
+                    <option value="">Informe o apartamento acima</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nome</label>
+                <input type="text" class="form-control disabled-input" id="nomeRetirada" disabled>
+            </div>      
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                <textarea class="form-control disabled-input" id="descricao" rows="2" disabled></textarea>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Data de Retirada <span class="required">*</span></label>
+                    <input type="date" class="form-control" id="dataRetirada" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">CPF <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="cpf" required maxlength="14" placeholder="000.000.000-00" oninput="formatarCPF(this)">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nome de quem retirou <span class="required">*</span></label>
+                <input type="text" class="form-control" id="nomeQuemRetirou" list="moradoresCadastradosList" required>
+                <datalist id="moradoresCadastradosList"></datalist>
+                <small class="text-muted" id="dicaMoradores"></small>
+            </div>
+            <div class="mb-3" id="grupoCodigoRetirada">
+                <label class="form-label">Código de retirada (na etiqueta) <span class="required">*</span></label>
+                <input type="text" class="form-control" id="codigoRetirada" maxlength="6" placeholder="000000">
+                <small class="text-muted">Obrigatório apenas ao retirar uma encomenda específica.</small>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Salvar</button>
+            <a href="index.html" class="btn btn-secondary w-100 mt-2">Voltar</a>
+        </form>
+        <div class="mensagem-sucesso" id="mensagemSucesso">Termo gerado com sucesso!</div>
+        <button id="btnImprimir" class="btn btn-success btn-sm mt-3" style="display: none;" onclick="gerarTermo()">Imprimir</button>
+        <div class="mensagem-impressao" id="mensagemImpressao">Impresso com sucesso!</div>
+
+        <hr>
+        <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Retiradas recentes</h6>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="carregarRetiradasRecentes()">Atualizar</button>
+        </div>
+        <ul class="list-group list-group-flush mt-2" id="listaRetiradasRecentes" style="max-height: 180px; overflow-y: auto;">
+            <li class="list-group-item text-muted small">Carregando...</li>
+        </ul>
+    </div>
+
+    <footer class="footer">
+        &copy; 2025 - SafePack. Todos os direitos reservados.
+    </footer>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        // Cache local das encomendas pendentes por apartamento, populado ao consultar o backend
+        let encomendasCache = {};
+        // Cache dos moradores cadastrados no apartamento atualmente digitado (nome -> cpf)
+        let moradoresApartamentoCache = {};
+
+        // Extrai uma mensagem de erro legível tanto de um HTTPException (detail: string)
+        // quanto de um erro de validação automática do FastAPI/Pydantic (detail: lista de objetos)
+        function extrairMensagemErro(erro) {
+            if (!erro) return "Tente novamente.";
+            if (typeof erro.detail === 'string') return erro.detail;
+            if (Array.isArray(erro.detail)) {
+                return erro.detail.map(item => item.msg || JSON.stringify(item)).join(' | ');
+            }
+            return "Tente novamente.";
+        }
+
+        // Formata o CPF digitado como 000.000.000-00 em tempo real
+        function formatarCPF(input) {
+            let valor = input.value.replace(/\D/g, '').slice(0, 11);
+            valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+            valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+            valor = valor.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            input.value = valor;
+        }
+
+        // Busca os moradores já cadastrados para o apartamento digitado, para agilizar
+        // a retirada (autocompletar nome + CPF de quem já mora no imóvel).
+        async function carregarMoradoresDoApartamento(numeroApartamento) {
+            let dicaMoradores = document.getElementById('dicaMoradores');
+            let datalist = document.getElementById('moradoresCadastradosList');
+            datalist.innerHTML = '';
+            moradoresApartamentoCache = {};
+            dicaMoradores.textContent = '';
+
+            if (!numeroApartamento) return;
+
+            try {
+                let response = await fetch(`${API_BASE}/moradores-cadastrados/`);
+                if (!response.ok) return;
+                let dados = await response.json();
+                let doApartamento = (dados.moradores || []).filter(
+                    m => String(m.num_apartamento) === String(numeroApartamento)
+                );
+
+                if (doApartamento.length === 0) {
+                    dicaMoradores.textContent = 'Nenhum morador cadastrado para este apartamento ainda.';
+                    return;
+                }
+
+                doApartamento.forEach(m => {
+                    moradoresApartamentoCache[m.nome_morador] = m.cpf_morador;
+                    let option = document.createElement('option');
+                    option.value = m.nome_morador;
+                    datalist.appendChild(option);
+                });
+                dicaMoradores.textContent = `Moradores cadastrados: ${doApartamento.map(m => m.nome_morador).join(', ')}`;
+            } catch (error) {
+                console.error("Erro ao carregar moradores do apartamento:", error);
+            }
+        }
+
+        // Ao escolher um nome já cadastrado, preenche o CPF automaticamente
+        document.getElementById('nomeQuemRetirou').addEventListener('input', function () {
+            let cpfConhecido = moradoresApartamentoCache[this.value];
+            if (cpfConhecido) {
+                let cpfInput = document.getElementById('cpf');
+                cpfInput.value = cpfConhecido;
+                formatarCPF(cpfInput);
+            }
+        });
+
+        // Carrega e exibe as retiradas mais recentes (qualquer apartamento), para o
+        // porteiro conferir rapidamente o histórico de movimentação.
+        async function carregarRetiradasRecentes() {
+            let lista = document.getElementById('listaRetiradasRecentes');
+            lista.innerHTML = '<li class="list-group-item text-muted small">Carregando...</li>';
+            try {
+                let response = await fetch(`${API_BASE}/retiradas/recentes?limite=10`);
+                if (!response.ok) throw new Error('Falha ao carregar');
+                let dados = await response.json();
+                if (!dados.retiradas || dados.retiradas.length === 0) {
+                    lista.innerHTML = '<li class="list-group-item text-muted small">Nenhuma retirada registrada ainda.</li>';
+                    return;
+                }
+                lista.innerHTML = '';
+                dados.retiradas.forEach(r => {
+                    let item = document.createElement('li');
+                    item.className = 'list-group-item small';
+                    item.textContent = `Apto ${r.num_apartamento} — ${r.nome_morador} (${r.data_retirada})`;
+                    lista.appendChild(item);
+                });
+            } catch (error) {
+                console.error("Erro ao carregar retiradas recentes:", error);
+                lista.innerHTML = '<li class="list-group-item text-danger small">Erro ao carregar retiradas recentes.</li>';
+            }
+        }
+
+        // Carrega o painel de retiradas recentes assim que a página abre
+        carregarRetiradasRecentes();
+
+        // Carrega no <select> os apartamentos que têm ao menos uma encomenda pendente,
+        // para o porteiro apenas selecionar em vez de precisar digitar o número.
+        async function carregarApartamentosPendentes() {
+            let apartamentoSelect = document.getElementById('apartamentoRetirada');
+            try {
+                let response = await fetch(`${API_BASE}/encomendas-pendentes/apartamentos`);
+                if (!response.ok) throw new Error('Falha ao carregar apartamentos');
+                let dados = await response.json();
+
+                if (!dados.apartamentos || dados.apartamentos.length === 0) {
+                    apartamentoSelect.innerHTML = '<option value="">Nenhum apartamento com encomenda pendente</option>';
+                    return;
+                }
+
+                apartamentoSelect.innerHTML = '<option value="">Selecione o apartamento</option>';
+                dados.apartamentos.forEach(apto => {
+                    let option = document.createElement('option');
+                    option.value = apto.num_apartamento;
+                    let sufixo = apto.quantidade === 1 ? '1 encomenda pendente' : `${apto.quantidade} encomendas pendentes`;
+                    option.textContent = `Apto ${apto.num_apartamento} — ${sufixo}`;
+                    apartamentoSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Erro ao carregar apartamentos pendentes:", error);
+                apartamentoSelect.innerHTML = '<option value="">Erro ao carregar apartamentos</option>';
+            }
+        }
+
+        // Carrega a lista assim que a página abre
+        carregarApartamentosPendentes();
+
+        document.getElementById('apartamentoRetirada').addEventListener('change', function () {
+            let numeroApartamento = this.value;
+            let dataChegadaSelect = document.getElementById('dataChegada');
+
+            dataChegadaSelect.innerHTML = '<option value="">Selecione a encomenda</option>'; // Resetar o dropdown
+            carregarMoradoresDoApartamento(numeroApartamento);
+
+            if (!numeroApartamento) {
+                dataChegadaSelect.disabled = true;
+                return;
+            }
+
+            (async () => {
+                try {
+                    // Chamada ao backend para obter as encomendas
+                    let response = await fetch(`${API_BASE}/encomendas/${numeroApartamento}`);
+                    if (response.ok) {
+                        let dados = await response.json();
+                        encomendasCache[numeroApartamento] = dados.encomendas;
+
+                        if (dados.encomendas.length === 0) {
+                            dataChegadaSelect.innerHTML = '<option value="">Nenhuma encomenda pendente</option>';
+                            dataChegadaSelect.disabled = true;
+                            return;
+                        }
+
+                        dados.encomendas.forEach(encomenda => {
+                            let option = document.createElement('option');
+                            option.value = encomenda.dataChegada;
+                            // Mostra a data junto com a descrição do pacote, para deixar claro
+                            // qual encomenda está sendo selecionada (ex.: "21/09/2026 — Caixa Amazon")
+                            option.textContent = `${encomenda.dataChegada} — ${encomenda.descricao || 'sem descrição'} (${encomenda.nome})`;
+                            dataChegadaSelect.appendChild(option);
+                        });
+
+                        let optionAll = document.createElement('option');
+                        optionAll.value = 'todas';
+                        optionAll.textContent = 'Retirar todas as encomendas pendentes deste apartamento';
+                        dataChegadaSelect.appendChild(optionAll);
+
+                        dataChegadaSelect.disabled = false;
+                    } else {
+                        console.error("Erro ao carregar encomendas:", response.statusText);
+                        dataChegadaSelect.innerHTML = '<option value="">Erro ao consultar</option>';
+                    }
+                } catch (error) {
+                    console.error("Erro na requisição:", error);
+                    dataChegadaSelect.innerHTML = '<option value="">Erro de conexão</option>';
+                }
+            })();
+        });
+
+
+        document.getElementById('dataChegada').addEventListener('change', function() {
+            let numeroApartamento = document.getElementById('apartamentoRetirada').value;
+            let nomeInput = document.getElementById('nomeRetirada');
+            let descricaoInput = document.getElementById('descricao');
+            let selectedDate = this.value;
+            let grupoCodigo = document.getElementById('grupoCodigoRetirada');
+            let codigoInput = document.getElementById('codigoRetirada');
+
+            if (selectedDate === 'todas') {
+                nomeInput.value = "Múltiplos remetentes";
+                descricaoInput.value = "Múltiplas encomendas";
+                // Retirando todas de uma vez: o código individual de cada etiqueta não se aplica
+                grupoCodigo.classList.add('hidden');
+                codigoInput.value = '';
+            } else {
+                let encomenda = (encomendasCache[numeroApartamento] || []).find(e => e.dataChegada === selectedDate);
+                nomeInput.value = encomenda ? encomenda.nome : "";
+                descricaoInput.value = encomenda ? encomenda.descricao : "";
+                grupoCodigo.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('retiradaForm').addEventListener('submit', async function (event) {
+            event.preventDefault(); // Evita o comportamento padrão do formulário (inclusive o balão nativo do navegador)
+
+            let numeroApartamentoTexto = document.getElementById('apartamentoRetirada').value.trim();
+
+            // Validação manual e amigável dos campos obrigatórios, com mensagens claras
+            // (em vez do balão padrão do navegador, que não deixava claro qual campo faltava)
+            if (!numeroApartamentoTexto) {
+                alert("Informe o número do apartamento antes de continuar.");
+                document.getElementById('apartamentoRetirada').focus();
+                return;
+            }
+            if (!document.getElementById('dataChegada').value) {
+                alert("Selecione qual encomenda será retirada.");
+                return;
+            }
+            if (!document.getElementById('dataRetirada').value) {
+                alert("Informe a data de retirada.");
+                return;
+            }
+            if (!document.getElementById('cpf').value.trim()) {
+                alert("Informe o CPF de quem está retirando a encomenda.");
+                return;
+            }
+            if (!document.getElementById('nomeQuemRetirou').value.trim()) {
+                alert("Informe o nome de quem está retirando a encomenda.");
+                return;
+            }
+
+            let retirarTodas = document.getElementById('dataChegada').value === 'todas';
+            // O código de retirada só é obrigatório quando NÃO é uma retirada de todas as encomendas de uma vez
+            if (!retirarTodas && !document.getElementById('codigoRetirada').value.trim()) {
+                alert("Informe o código de retirada que está na etiqueta da encomenda.");
+                return;
+            }
+
+            // Capturar os dados do formulário no formato esperado pelo backend (RetiradaEntrada)
+            let dados = {
+                num_apartamento: parseInt(numeroApartamentoTexto, 10),
+                cpf_morador: document.getElementById('cpf').value,
+                nome_morador: document.getElementById('nomeRetirada').value,
+                data_retirada: document.getElementById('dataRetirada').value,
+                codigo_retirada: retirarTodas ? null : document.getElementById('codigoRetirada').value.trim(),
+                retirar_todas: retirarTodas
+            };
+
+            // Dados adicionais usados apenas para gerar o termo impresso (não enviados ao backend)
+            let dadosTermo = {
+                num_apartamento: dados.num_apartamento,
+                dataChegada: document.getElementById('dataChegada').value,
+                nome: dados.nome_morador,
+                descricao: document.getElementById('descricao').value,
+                dataRetirada: dados.data_retirada,
+                cpf: dados.cpf_morador,
+                nomeQuemRetirou: document.getElementById('nomeQuemRetirou').value
+            };
+
+            try {
+                // Enviar os dados para o backend
+                let response = await fetch(`${API_BASE}/registrar_retirada/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                if (response.ok) {
+                    alert("Retirada registrada com sucesso!");
+
+                     // Gerar o termo de retirada após o registro bem-sucedido
+                    gerarTermo(dadosTermo);
+
+                    // Exibir o botão de impressão
+                    document.getElementById('btnImprimir').style.display = 'block';
+
+                    // Atualiza o painel de retiradas recentes e a lista de apartamentos
+                    // pendentes (o apartamento que acabou de retirar pode não ter mais pendências)
+                    carregarRetiradasRecentes();
+                    carregarApartamentosPendentes();
+                } else {
+                    let erro = await response.json();
+                    alert(`Erro ao registrar retirada: ${extrairMensagemErro(erro)}`);
+                }
+            } catch (error) {
+                console.error("Erro de conexão:", error);
+                alert("Erro ao conectar com o servidor.");
+            }
+        });
+
+
+        function gerarTermo(dados) {
+            let termo =
+                `Apartamento: ${dados.num_apartamento}\n` +
+                `Nome do Remetente: ${dados.nome}\n` +
+                `Data de Chegada: ${dados.dataChegada}\n` +
+                `Data de Retirada: ${dados.dataRetirada}\n` +
+                `Descrição: ${dados.descricao}\n\n` +
+                `CPF de quem retirou: ${dados.cpf}\n` +
+                `Nome de quem retirou: ${dados.nomeQuemRetirou}\n\n` +
+                `Assinatura: ___________________________\n`;
+
+            // Criar o canvas para gerar o termo
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+
+            // Configurações do canvas para o tamanho de uma folha A4 (300 DPI)
+            let largura = 2480;
+            let altura = 3508;
+            canvas.width = largura;
+            canvas.height = altura;
+
+            // Fundo branco
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, largura, altura);
+
+            // Título do termo
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 80px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("TERMO DE RETIRADA DE ENCOMENDA", largura / 2, 300);
+
+            // Conteúdo do termo
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'left';
+            let linhas = termo.split('\n');
+            let y = 600;
+            let margemEsquerda = 200;
+
+            for (let linha of linhas) {
+                ctx.fillText(linha, margemEsquerda, y);
+                y += 100;
+            }
+
+            // Criar espaço para assinatura
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(margemEsquerda, altura - 500);
+            ctx.lineTo(largura - margemEsquerda, altura - 500);
+            ctx.stroke();
+            ctx.font = '48px Arial';
+            ctx.fillText("Assinatura", margemEsquerda, altura - 430);
+
+            // Rodapé
+            ctx.font = '36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("Documento gerado automaticamente por SafePack", largura / 2, altura - 200);
+
+            // Baixar o termo como imagem
+            let link = document.createElement('a');
+            link.download = 'termo_de_retirada.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+    </script>
+</body>
+</html>

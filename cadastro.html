@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Encomendas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas"></script>
+
+    <style>
+         body {
+            background-image: url('images.jpeg'); /* Caminho para a imagem */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            padding: 20px;
+            position: relative;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+            transition: all 0.3s ease-in-out;
+        }
+        .container:hover {
+            box-shadow: 0px 15px 25px rgba(0, 0, 0, 0.3);
+        }
+        .form-label .required {
+            color: red;
+        }
+        /* Garante altura mínima igual para rótulos, evitando que um campo fique mais baixo
+           que outro na mesma linha quando o texto do rótulo é maior e quebra em 2 linhas */
+        .row .form-label {
+            display: block;
+            min-height: 2.4em;
+        }
+        .etiqueta {
+            display: none;
+            background: white;
+            padding: 10px;
+            border: 1px solid black;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .mensagem-sucesso, .mensagem-impressao {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+        }
+        .disabled-input {
+            background-color: #f0f0f0 !important;
+            color: #a0a0a0 !important;
+        }
+
+         .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            padding: 1px;
+            font-size: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center mb-4">Controle de Encomendas</h2>
+        <form id="encomendaForm">
+            <div class="mb-3">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <label class="form-label">Nº Apartamento <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="apartamento" placeholder="Número" required>
+                    </div>
+                    <div class="col-8">
+                        <label class="form-label">Nome do morador/destinatário</label>
+                        <input type="text" class="form-control" id="nome" list="moradoresEncomendaList" placeholder="Nome de quem vai receber">
+                        <datalist id="moradoresEncomendaList"></datalist>
+                        <small class="text-muted" id="dicaMoradoresEncomenda"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <label class="form-label">Data<span class="required">*</span></label>
+                        <input type="date" class="form-control" id="dataRecebimento" required>
+                    </div>
+                    <div class="col-8">
+                        <label for="funcionario">Funcionário que recebeu <span class="required">*</span></label>
+                        <select id="funcionario" name="funcionario" class="form-control" required>
+                            <option value="">Carregando funcionários...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Descrição do Produto</label>
+                <textarea id="descricaoProduto" class="form-control" rows="3" maxlength="100"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Registrar</button>
+            <a href="index.html" class="btn btn-secondary w-100 mt-2">Voltar</a>
+        </form>
+
+        <div class="mensagem-sucesso" id="mensagemSucesso">Etiqueta gerada com sucesso!</div>
+        <div class="etiqueta" id="etiqueta">
+            <h4>Etiqueta de Encomenda</h4>
+            <p><strong>Apartamento:</strong> <span id="etqApartamento"></span></p>
+            <p><strong>Moradores:</strong> <span id="etqNome"></span></p>
+            <p><strong>Descrição:</strong> <span id="etqDescricao"></span></p>
+            <p><strong>Código de retirada:</strong> <span id="etqCodigo" style="font-size: 1.3em; font-weight: bold;"></span></p>
+            <p style="font-size: 0.8em; color: #555;">Guarde este código — ele será exigido no momento da retirada.</p>
+        </div>
+
+        <div class="text-end">
+            <button id="btnImprimir" class="btn btn-success btn-sm mt-3" style="display: none;">Imprimir</button>
+        </div>        
+        <div class="mensagem-impressao" id="mensagemImpressao">Impresso com sucesso!</div>
+    </div>
+         
+    <footer class="footer">
+        &copy; 2025 - SafePack. Todos os direitos reservados.
+    </footer>
+
+    <script>
+
+        // Extrai uma mensagem de erro legível tanto de um HTTPException (detail: string)
+        // quanto de um erro de validação automática do FastAPI/Pydantic (detail: lista de objetos)
+        function extrairMensagemErro(erro) {
+            if (!erro) return "Verifique os dados e tente novamente.";
+            if (typeof erro.detail === 'string') return erro.detail;
+            if (Array.isArray(erro.detail)) {
+                return erro.detail.map(item => item.msg || JSON.stringify(item)).join(' | ');
+            }
+            return "Verifique os dados e tente novamente.";
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let datalistMoradores = document.getElementById('moradoresEncomendaList');
+            let dicaMoradores = document.getElementById('dicaMoradoresEncomenda');
+            let timeoutBusca; // usado para "debounce": só busca depois que o usuário parar de digitar
+
+            document.getElementById('apartamento').addEventListener('input', function () {
+                let numeroApartamento = this.value.trim();
+                datalistMoradores.innerHTML = '';
+                dicaMoradores.textContent = '';
+
+                clearTimeout(timeoutBusca);
+                if (!numeroApartamento) return;
+
+                // Aguarda 500ms sem digitação antes de consultar o backend, para não
+                // disparar uma busca (e possível alerta) a cada dígito do apartamento.
+                timeoutBusca = setTimeout(async () => {
+                    try {
+                        let response = await fetch(`http://127.0.0.1:8000/moradores/${numeroApartamento}`);
+                        if (response.ok) {
+                            let data = await response.json();
+                            if (data.moradores.length === 0) {
+                                dicaMoradores.textContent = 'Nenhum morador cadastrado para este apartamento ainda — você pode digitar o nome manualmente.';
+                            } else {
+                                data.moradores.forEach(morador => {
+                                    let option = document.createElement('option');
+                                    option.value = morador;
+                                    datalistMoradores.appendChild(option);
+                                });
+                                dicaMoradores.textContent = `Moradores cadastrados: ${data.moradores.join(', ')}`;
+                            }
+                        } else {
+                            console.error("Erro ao buscar moradores:", response.statusText);
+                        }
+                    } catch (error) {
+                        console.error("Erro na requisição:", error);
+                    }
+                }, 500);
+            });
+        });    
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            let funcionarioSelect = document.getElementById('funcionario'); // Campo de seleção
+
+            try {
+                // Requisição para buscar os funcionários disponíveis (endpoint que lista todos)
+                let response = await fetch('http://127.0.0.1:8000/funcionarios/');
+                if (response.ok) {
+                    let data = await response.json();
+                    funcionarioSelect.innerHTML = '<option value="">Selecione o funcionário</option>';
+                    if (data.funcionarios.length === 0) {
+                        funcionarioSelect.innerHTML = '<option value="">Nenhum funcionário cadastrado</option>';
+                        alert("Nenhum funcionário encontrado.");
+                    } else {
+                        data.funcionarios.forEach(funcionario => {
+                            let option = document.createElement('option');
+                            option.value = funcionario.id_cracha; // Usar o ID como valor
+                            option.textContent = funcionario.nome_func; // Mostrar o nome como texto
+                            funcionarioSelect.appendChild(option);
+                        });
+                    }
+                } else {
+                    console.error("Erro ao carregar funcionários:", response.statusText);
+                    funcionarioSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    alert("Não foi possível carregar a lista de funcionários.");
+                }
+            } catch (error) {
+                console.error("Erro na requisição:", error);
+                funcionarioSelect.innerHTML = '<option value="">Erro de conexão</option>';
+                alert("Erro ao carregar os funcionários. Tente novamente.");
+            }
+        });
+
+        async function enviarDados(dados) {
+            try {
+                // Validar os dados antes de enviar
+                if (!dados.apartamento || !dados.nome || !dados.dataRecebimento || !dados.id_cracha) {
+                    alert("Preencha todos os campos obrigatórios corretamente.");
+                    return;
+                }
+                // Fazer a requisição ao backend
+                let response = await fetch(`http://127.0.0.1:8000/registrar_entrega/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json' // Indica que estamos enviando JSON
+                    },
+                    body: JSON.stringify({
+                        num_apartamento: parseInt(dados.apartamento, 10),
+                        nome_morador: dados.nome.trim(),
+                        data_recebida: dados.dataRecebimento,
+                        nome_recebedor: dados.nomeRecebedor,
+                        descricao: dados.descricaoProduto || "",
+                        id_cracha: parseInt(dados.id_cracha, 10)
+                    })
+                 });
+                if (response.ok) {
+                    let resultado = await response.json();
+                    exibirEtiqueta(dados, resultado.codigo_retirada);
+                    document.getElementById('encomendaForm').reset(); // Limpa o formulário após o sucesso
+                } else {
+                    let erro = await response.json();
+                    alert(`Erro ao registrar encomenda: ${extrairMensagemErro(erro)}`);
+                }
+            } catch (error) {
+                console.error("Erro ao processar o erro retornado:", error);
+                alert("Erro registrar encomenda: Não foi possível interpretar a mensagem de erro.");
+            }
+            return;
+        }
+
+        function exibirEtiqueta(dados, codigoRetirada) {
+            document.getElementById('etqApartamento').textContent = dados.apartamento;
+            document.getElementById('etqNome').textContent = dados.nome;
+            document.getElementById('etqDescricao').textContent = dados.descricaoProduto || "-";
+            document.getElementById('etqCodigo').textContent = codigoRetirada;
+
+            document.getElementById('etiqueta').style.display = 'block';
+            document.getElementById('mensagemSucesso').style.display = 'block';
+            document.getElementById('btnImprimir').style.display = 'inline-block';
+        }
+
+        document.getElementById('encomendaForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evita o envio padrão do formulário
+
+            // Capturar os valores dos campos
+            let apartamento = document.getElementById('apartamento').value;
+            let nome = document.getElementById('nome').value;
+            let dataRecebimento = document.getElementById('dataRecebimento').value;
+            let descricaoProduto = document.getElementById('descricaoProduto').value;
+            let id_cracha = document.getElementById('funcionario').value;
+            // Nome do funcionário que recebeu = texto da opção selecionada no <select>
+            let funcionarioSelect = document.getElementById('funcionario');
+            let nomeRecebedor = funcionarioSelect.selectedOptions[0] ? funcionarioSelect.selectedOptions[0].textContent : "";
+                if (!id_cracha || isNaN(id_cracha)) {
+                    alert("Selecione um funcionário válido.");
+                return;
+                }
+
+
+            // Checar se todos os campos obrigatórios estão preenchidos
+            if (!apartamento || !nome || !dataRecebimento || !id_cracha) {
+                alert("Por favor, preencha todos os campos obrigatórios.");
+                return; // Impede o envio se faltar algum dado
+            }
+
+             // Se tudo estiver ok, enviar os dados
+            enviarDados({ apartamento, nome, dataRecebimento, descricaoProduto, id_cracha, nomeRecebedor });
+        });
+
+
+        document.getElementById('btnImprimir').addEventListener('click', function() {
+            html2canvas(document.getElementById('etiqueta'), { scale: 2 }).then(canvas => {
+                let link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'etiqueta.png';
+                link.click();
+                document.getElementById('mensagemImpressao').style.display = 'block';
+                setTimeout(() => document.getElementById('mensagemImpressao').style.display = 'none', 3000);
+                document.getElementById('encomendaForm').reset();
+            });
+        });
+    </script>
+</body>
+</html>
