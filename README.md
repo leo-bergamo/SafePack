@@ -1,0 +1,1 @@
+SafePack é um projeto desenvolvido para otimizar a logística de recebimento e armazenamento de encomendas em prédios residenciais e comerciais, proporcionando mais organização, segurança e praticidade para moradores, empresas, entregadores e administradores.
