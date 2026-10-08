@@ -151,11 +151,11 @@ O SafePack foi desenvolvido como **projeto acadêmico durante a graduação em C
 
 Projeto desenvolvido em equipe durante a graduação.
 
-**Leonardo Bergamo**
-**Cauã Petras**
-**Davi Affonso**
-**Gustavo Rossi**
-**Larissa Barbosa**
+**Leonardo Bergamo**|
+**Cauã Petras**|
+**Davi Affonso**|
+**Gustavo Rossi**|
+**Larissa Barbosa**|
 **Samuel Frazão**
 
 ## 📌 Status
